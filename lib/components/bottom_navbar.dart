@@ -56,6 +56,7 @@ class BottomNavBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
+                // ignore: deprecated_member_use
                 color: const Color(0xFF5B9EE1).withOpacity(0.6),
                 offset: const Offset(0, 8),
                 blurRadius: 24,
@@ -81,8 +82,7 @@ class BottomNavBar extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/cart_page');
         break;
       case 3:
-        // Assuming notifications might be part of customization
-        Navigator.pushReplacementNamed(context, 'customize_page');
+        Navigator.pushReplacementNamed(context, '/chat_page');
         break;
       case 4:
         Navigator.pushReplacementNamed(context, '/profile_page');

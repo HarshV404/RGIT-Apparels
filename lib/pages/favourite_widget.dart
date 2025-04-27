@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:rgit_apparels/pages/home_widget.dart'; // <-- Import your HomePage here
 
 class FavouriteWidget extends StatefulWidget {
   const FavouriteWidget({super.key});
@@ -22,13 +23,22 @@ class _FavouriteWidgetState extends State<FavouriteWidget> {
           style: TextStyle(
             color: Color(0xFF1A242F),
             fontFamily: 'Airbnb Cereal App',
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
+            fontSize: 20, // Increased font size
+            fontWeight: FontWeight.bold, // Made the text bold
           ),
         ),
         leading: IconButton(
-          icon: SvgPicture.asset('assets/images/back_arrow.svg'),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(
+            Icons.arrow_back, // Using the built-in back arrow icon
+            color: Colors.black, // Set the color of the back arrow to black
+          ),
+          onPressed: () {
+            // Navigate to the HomePage when the back button is pressed
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeWidget()),
+            );
+          },
         ),
         actions: [
           IconButton(
@@ -127,7 +137,6 @@ class _FavouriteWidgetState extends State<FavouriteWidget> {
             ),
           ),
           const SizedBox(height: 16),
-          
           // Product info
           if (isBestSeller)
             const Text(
@@ -149,7 +158,6 @@ class _FavouriteWidgetState extends State<FavouriteWidget> {
             ),
           ),
           const SizedBox(height: 12),
-          
           // Price and color options
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -169,7 +177,6 @@ class _FavouriteWidgetState extends State<FavouriteWidget> {
             ],
           ),
           const SizedBox(height: 16),
-          
           // Favorite button
           Align(
             alignment: Alignment.centerLeft,

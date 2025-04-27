@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rgit_apparels/pages/home_widget.dart'; // <-- Import your HomePage here
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -8,8 +9,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool _isDarkMode = false;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,17 +19,22 @@ class _ProfilePageState extends State<ProfilePage> {
           'Profile',
           style: TextStyle(
             color: Color(0xFF1A242F),
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
+            fontSize: 20, // Increased font size
+            fontWeight: FontWeight.bold, // Made the text bold
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios, size: 20, color: Colors.black),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeWidget()),
+            );
+          },
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings, color: Colors.black),
             onPressed: () {},
           ),
         ],
@@ -43,7 +47,6 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              
               // Profile Image and Edit Button
               Center(
                 child: Stack(
@@ -87,8 +90,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
               ),
-              
-              // Name
               const SizedBox(height: 16),
               const Text(
                 'alisson becker',
@@ -98,105 +99,18 @@ class _ProfilePageState extends State<ProfilePage> {
                   fontWeight: FontWeight.normal,
                 ),
               ),
-              
+              const SizedBox(height: 30),
               // Full Name Field
-              const SizedBox(height: 30),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Full Name',
-                    style: TextStyle(
-                      color: Color(0xFF1A242F),
-                      fontSize: 16,
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: const Text(
-                      'Alosson Becker',
-                      style: TextStyle(
-                        color: Color(0xFF1A242F),
-                        fontSize: 14,
-                        fontWeight: FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
-              // Email Address Field
+              _buildProfileField('Full Name', 'Alosson Becker'),
               const SizedBox(height: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Email Address',
-                    style: TextStyle(
-                      color: Color(0xFF1A242F),
-                      fontSize: 16,
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: const Text(
-                      'AlossonBecker@gmail.com',
-                      style: TextStyle(
-                        color: Color(0xFF1A242F),
-                        fontSize: 14,
-                        fontWeight: FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
-              // Dark Mode Toggle
+              // Email Address Field
+              _buildProfileField('Email Address', 'AlossonBecker@gmail.com'),
               const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Dark Mode',
-                    style: TextStyle(
-                      color: Color(0xFF1A242F),
-                      fontSize: 16,
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                  Switch(
-                    value: _isDarkMode,
-                    onChanged: (value) {
-                      setState(() {
-                        _isDarkMode = value;
-                      });
-                    },
-                    activeColor: Colors.white,
-                    activeTrackColor: Colors.blue,
-                  ),
-                ],
-              ),
-              
-              // Payment Info
-              const SizedBox(height: 20),
               const Divider(),
+              // Payment Info
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.credit_card),
+                leading: const Icon(Icons.credit_card, color: Color(0xFF1A242F)),
                 title: const Text(
                   'Payment Info',
                   style: TextStyle(
@@ -205,15 +119,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontWeight: FontWeight.normal,
                   ),
                 ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF1A242F)),
                 onTap: () {},
               ),
-              
-              // Shipping Address
               const Divider(),
+              // Shipping Address
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.location_on_outlined),
+                leading: const Icon(Icons.location_on_outlined, color: Color(0xFF1A242F)),
                 title: const Text(
                   'Shipping Address',
                   style: TextStyle(
@@ -222,12 +135,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontWeight: FontWeight.normal,
                   ),
                 ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF1A242F)),
                 onTap: () {},
               ),
-              
-              // Delete Account
               const SizedBox(height: 60),
+              // Delete Account Button
               TextButton.icon(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
                 label: const Text(
@@ -238,7 +150,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 onPressed: () {
-                  // Show confirmation dialog
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -251,10 +162,13 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         TextButton(
                           onPressed: () {
-                            // Delete account logic would go here
+                            // Delete account logic here
                             Navigator.pop(context);
                           },
-                          child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+                          child: const Text(
+                            'DELETE',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                       ],
                     ),
@@ -266,6 +180,39 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildProfileField(String title, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF1A242F),
+            fontSize: 16,
+            fontWeight: FontWeight.normal,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF1A242F),
+              fontSize: 14,
+              fontWeight: FontWeight.normal,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

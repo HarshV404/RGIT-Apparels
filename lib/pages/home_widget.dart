@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:rgit_apparels/components/bottom_navbar.dart';
+import 'package:rgit_apparels/components/my_drawer.dart';
 import 'package:rgit_apparels/services/firestore_services.dart';
 import 'package:rgit_apparels/models/shop.dart';
 
@@ -18,7 +19,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String _selectedBrand = 'Nike';
-  List<String> _brands = ['Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok'];
+  List<String> _brands = ['Nike', 'Adidas', 'Puma', 'Reebok'];
   bool _isLoading = false;
 
   @override
@@ -55,6 +56,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      drawer: DrawerWidget(),
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
         child: Padding(
@@ -85,13 +87,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      leading: const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: CircleAvatar(
-          backgroundColor: Colors.white,
-          child: Icon(Icons.menu, color: Colors.black),
-        ),
-      ),
       title: StreamBuilder<DocumentSnapshot>(
         stream: _firestoreService.getStoreLocation(),
         builder: (context, snapshot) {
@@ -680,7 +675,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 }
 
 class _DefaultLocationWidget extends StatelessWidget {
-  const _DefaultLocationWidget({Key? key}) : super(key: key);
+  const _DefaultLocationWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

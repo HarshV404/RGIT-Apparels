@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:rgit_apparels/auth/auth_page.dart';
 import 'package:rgit_apparels/models/shop.dart';
 import 'package:rgit_apparels/pages/cart_widget.dart';
+import 'package:rgit_apparels/pages/chatbot_page.dart';
 import 'package:rgit_apparels/pages/customize_page.dart';
 import 'package:rgit_apparels/pages/favourite_widget.dart';
 import 'package:rgit_apparels/pages/home_widget.dart';
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         '/home_page':(context) => const HomeWidget(),
         '/fav-page':(context) => const FavouriteWidget(),
         '/profile_page':(context) => const ProfilePage(),
+        '/chat_page':(context) => const ChatbotPage(),
         'customize_page':(context) => const CustomizePage(),
       },
     );
