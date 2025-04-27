@@ -6,6 +6,8 @@ import 'package:rgit_apparels/components/bottom_navbar.dart';
 import 'package:rgit_apparels/components/my_drawer.dart';
 import 'package:rgit_apparels/services/firestore_services.dart';
 import 'package:rgit_apparels/models/shop.dart';
+import 'package:rgit_apparels/pages/product_details_page.dart';
+import 'package:rgit_apparels/components/product_tile.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -19,7 +21,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String _selectedBrand = 'Nike';
-  List<String> _brands = ['Nike', 'Adidas', 'Puma', 'Reebok'];
+  List<String> _brands = ['Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok'];
   bool _isLoading = false;
 
   @override
@@ -179,7 +181,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   String getCurrentUserId() {
     final user = _auth.currentUser;
-    return user?.uid ?? 'current_user'; // Fallback for testing
+    return user?.uid ?? 'current_user';
   }
 
   Widget _buildSearchBar() {
@@ -232,10 +234,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           return _buildDefaultBrandFilters();
         }
         
-        // Get brand list from Firestore
         final brands = snapshot.data!;
-        
-        // Update the stored brands list
         _brands = brands;
         
         return SingleChildScrollView(
@@ -394,12 +393,22 @@ class _HomeWidgetState extends State<HomeWidget> {
                   final data = doc.data() as Map<String, dynamic>;
                   return Padding(
                     padding: const EdgeInsets.only(right: 21),
-                    child: _buildShoeCard(
+                    child: ProductTile(
                       id: doc.id,
                       tag: data['tag'] ?? 'Best Seller',
                       name: data['name'] ?? 'Unknown Shoe',
                       price: data['price']?.toString() ?? '0.00',
-                      imagePath: data['imagePath'] ?? 'assets/images/placeholder.png',
+                      imagePath: data['imagePath'] ?? '',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProductDetailsWidget(
+                              productId: doc.id,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   );
                 }).toList(),
@@ -417,7 +426,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         _buildSectionHeader('New Arrivals'),
         const SizedBox(height: 16),
         StreamBuilder<QuerySnapshot>(
-          stream: _firestoreService.getNewArrivalsByBrand(_selectedBrand, 1),
+          stream: _firestoreService.getNewArrivalsByBrand(_selectedBrand, 5),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -432,96 +441,37 @@ class _HomeWidgetState extends State<HomeWidget> {
             }
             
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'No new arrivals',
-                          style: TextStyle(
-                            color: Color(0xFF5B9EE1),
-                            fontSize: 12,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Check back soon',
-                          style: TextStyle(
-                            color: Color(0xFF1A242F),
-                            fontSize: 20,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              return const Center(
+                child: Text('No new arrivals found'),
               );
             }
             
-            final data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-            
-            return Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        data['tag'] ?? 'Best Choice',
-                        style: const TextStyle(
-                          color: Color(0xFF5B9EE1),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        data['name'] ?? 'Nike Air Jordan',
-                        style: const TextStyle(
-                          color: Color(0xFF1A242F),
-                          fontSize: 20,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '\$${data['price']?.toString() ?? '0.00'}',
-                        style: const TextStyle(
-                          color: Color(0xFF1A242F),
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: 142,
-                    height: 80,
-                    child: data['imagePath'] != null 
-                        ? Image.network(
-                            data['imagePath'],
-                            fit: BoxFit.contain,
-                            errorBuilder: (ctx, error, _) => Image.asset(
-                              'assets/images/placeholder.png',
-                              fit: BoxFit.contain,
+                children: snapshot.data!.docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 21),
+                    child: ProductTile(
+                      id: doc.id,
+                      tag: data['tag'] ?? 'New',
+                      name: data['name'] ?? 'Unknown Shoe',
+                      price: data['price']?.toString() ?? '0.00',
+                      imagePath: data['imagePath'] ?? '',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProductDetailsWidget(
+                              productId: doc.id,
                             ),
-                          )
-                        : Image.asset(
-                            'assets/images/placeholder.png',
-                            fit: BoxFit.contain,
                           ),
-                  ),
-                ],
+                        );
+                      },
+                    ),
+                  );
+                }).toList(),
               ),
             );
           },
@@ -538,144 +488,29 @@ class _HomeWidgetState extends State<HomeWidget> {
           title,
           style: const TextStyle(
             color: Color(0xFF1A242F),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        GestureDetector(
-          onTap: () {
-            // Navigate to full list - will implement later
-            // Navigator.pushNamed(context, '/product_list', arguments: {'title': title, 'brand': _selectedBrand});
+        TextButton(
+          onPressed: () {
+            // View all functionality
           },
           child: const Text(
-            'See all',
+            'View all',
             style: TextStyle(
-              color: Color(0xFF5B9EE1),
-              fontSize: 13,
+              color: Color(0xFF707B81),
+              fontSize: 14,
             ),
           ),
         ),
       ],
     );
   }
-  
-  Widget _buildShoeCard({
-    required String id,
-    required String tag,
-    required String name,
-    required String price,
-    required String imagePath,
-  }) {
-    return Container(
-      width: 157,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 90,
-            alignment: Alignment.center,
-            child: imagePath.startsWith('http')
-                ? Image.network(
-                    imagePath,
-                    fit: BoxFit.contain,
-                    errorBuilder: (ctx, error, _) => Image.asset(
-                      'assets/images/placeholder.png',
-                      fit: BoxFit.contain,
-                    ),
-                  )
-                : Image.asset(
-                    imagePath,
-                    fit: BoxFit.contain,
-                    errorBuilder: (ctx, error, _) => Image.asset(
-                      'assets/images/placeholder.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            tag,
-            style: const TextStyle(
-              color: Color(0xFF5B9EE1),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            name,
-            style: const TextStyle(
-              color: Color(0xFF1A242F),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '\$$price',
-                style: const TextStyle(
-                  color: Color(0xFF1A242F),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  _addToCart(id);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    size: 16,
-                    color: Color(0xFF5B9EE1),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _addToCart(String productId) async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
-      final userId = getCurrentUserId();
-      await _firestoreService.addToCart(userId, productId);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Item added to cart')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding to cart: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
 }
 
 class _DefaultLocationWidget extends StatelessWidget {
-  const _DefaultLocationWidget({super.key});
+  const _DefaultLocationWidget();
 
   @override
   Widget build(BuildContext context) {
@@ -683,8 +518,8 @@ class _DefaultLocationWidget extends StatelessWidget {
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
+          children: [
+            const Text(
               'Store location',
               style: TextStyle(
                 color: Color(0xFF707B81),
@@ -693,11 +528,11 @@ class _DefaultLocationWidget extends StatelessWidget {
             ),
             Row(
               children: [
-                Icon(Icons.location_on, size: 14),
-                SizedBox(width: 4),
+                const Icon(Icons.location_on, size: 14),
+                const SizedBox(width: 4),
                 Text(
                   'Mondolibug, Sylhet',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFF1A242F),
                     fontSize: 14,
                   ),

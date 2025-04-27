@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,24 @@ void main() async{
       child: const MyApp(),
     ),
   );
+}
+
+Future<void> testFirestoreConnection() async {
+  try {
+    final firestore = FirebaseFirestore.instance;
+    final doc = await firestore.collection('test').doc('connection').get();
+    
+    if (!doc.exists) {
+      await firestore.collection('test').doc('connection').set({
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'connected'
+      });
+    }
+    
+    print('🔥 Firestore connection successful!');
+  } catch (e) {
+    print('❌ Firestore connection failed: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {

@@ -1,173 +1,259 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirestoreService {
-  // Create a Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Collection references
-  CollectionReference get products => _firestore.collection('products');
-  CollectionReference get users => _firestore.collection('users');
-  CollectionReference get orders => _firestore.collection('orders');
-  CollectionReference get appSettings => _firestore.collection('app_settings');
-  CollectionReference get brands => _firestore.collection('brands');
-
-  // Store location methods
+  // Get store location
   Stream<DocumentSnapshot> getStoreLocation() {
-    return appSettings.doc('store_location').snapshots();
+    return _firestore
+        .collection('app_settings')
+        .doc('store_location')
+        .snapshots();
   }
 
-  // Brand methods
+  // Get brands list from Firestore
   Future<List<String>> getBrandsList() async {
-    try {
-      final snapshot = await brands.get();
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return data['name'] as String;
-      }).toList();
-    } catch (e) {
-      // Return default brands if there's an error
-      return ['Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok'];
-    }
+    final snapshot = await _firestore.collection('Brands').get();
+    return snapshot.docs
+        .map((doc) {
+          final data = doc.data();
+          return data['name'] as String? ?? '';
+        })
+        .where((name) => name.isNotEmpty)
+        .toList();
   }
 
-  // Product methods with filtering
+  // Get popular products by brand
   Stream<QuerySnapshot> getPopularProductsByBrand(String brand, int limit) {
     return _firestore
-        .collection('products')
+        .collection('Products')
         .where('brand', isEqualTo: brand)
         .where('isPopular', isEqualTo: true)
         .limit(limit)
         .snapshots();
   }
 
+  // Get new arrivals by brand
   Stream<QuerySnapshot> getNewArrivalsByBrand(String brand, int limit) {
     return _firestore
-        .collection('products')
+        .collection('Products')
         .where('brand', isEqualTo: brand)
         .where('isNewArrival', isEqualTo: true)
         .limit(limit)
         .snapshots();
   }
 
-  // Search products
-  Future<QuerySnapshot> searchProducts(String query) {
-    // This is a simple implementation. For production, consider using
-    // a more sophisticated search solution like Algolia
-    return products
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThanOrEqualTo: '$query\uf8ff')
-        .get();
-  }
-
-  // Cart methods
-  Stream<QuerySnapshot> getUserCartItems(String userId) {
-    return _firestore
-        .collection('user_cart')
-        .doc(userId)
-        .collection('items')
-        .snapshots();
-  }
-
+  // Add item to cart (updated to include price)
   Future<void> addToCart(String userId, String productId) async {
-    final cartRef =
-        _firestore.collection('user_cart').doc(userId).collection('items');
+    // First get product details to save price
+    final productDoc = await getProductById(productId);
+    double price = 0.0;
 
-    // Check if item exists
-    final existingItem = await cartRef.doc(productId).get();
+    if (productDoc.exists) {
+      final productData = productDoc.data() as Map<String, dynamic>;
+      price = double.tryParse(productData['price']?.toString() ?? '0') ?? 0.0;
+    }
 
-    if (existingItem.exists) {
-      // Increment quantity if item exists
-      final currentData = existingItem.data() as Map<String, dynamic>;
-      final currentQuantity = currentData['quantity'] as int? ?? 1;
+    // Check if the item is already in the cart
+    final existingCartItem = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('cart')
+        .where('productId', isEqualTo: productId)
+        .get();
 
-      await cartRef.doc(productId).update({
+    if (existingCartItem.docs.isNotEmpty) {
+      // Item already exists, increment quantity
+      final docId = existingCartItem.docs.first.id;
+      final currentQuantity =
+          existingCartItem.docs.first.data()['quantity'] as int? ?? 0;
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .doc(docId)
+          .update({
         'quantity': currentQuantity + 1,
+        'price': price, // Make sure price is updated/saved
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } else {
-      // Add new item with quantity 1
-      await cartRef.doc(productId).set({
+      // Item doesn't exist, add new cart item
+      await _firestore.collection('users').doc(userId).collection('cart').add({
         'productId': productId,
         'quantity': 1,
+        'size': 'M', // Default size
+        'price': price, // Save price in cart item
         'addedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     }
   }
 
-  Future<void> removeFromCart(String userId, String productId) {
-    return _firestore
-        .collection('user_cart')
+  // Update cart item price (new method)
+  Future<void> updateCartItemPrice(
+      String userId, String cartItemId, double price) async {
+    await _firestore
+        .collection('users')
         .doc(userId)
-        .collection('items')
-        .doc(productId)
-        .delete();
-  }
-
-  Future<void> updateCartItemQuantity(
-      String userId, String productId, int quantity) {
-    return _firestore
-        .collection('user_cart')
-        .doc(userId)
-        .collection('items')
-        .doc(productId)
+        .collection('cart')
+        .doc(cartItemId)
         .update({
-      'quantity': quantity,
+      'price': price,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  // Favorites methods
-  Stream<QuerySnapshot> getUserFavorites(String userId) {
+  // Get user cart items as a stream
+  Stream<QuerySnapshot> getUserCartItems(String userId) {
     return _firestore
         .collection('users')
         .doc(userId)
-        .collection('favorites')
+        .collection('cart')
         .snapshots();
   }
 
-  Future<void> addToFavorites(String userId, String productId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('favorites')
-        .doc(productId)
-        .set({'productId': productId, 'addedAt': FieldValue.serverTimestamp()});
+  // Get user cart items once (not as a stream)
+  Future<QuerySnapshot> getUserCartItemsOnce(String userId) {
+    return _firestore.collection('users').doc(userId).collection('cart').get();
   }
 
-  Future<void> removeFromFavorites(String userId, String productId) {
-    return _firestore
+  // Get product by ID
+  Future<DocumentSnapshot> getProductById(String productId) {
+    return _firestore.collection('Products').doc(productId).get();
+  }
+
+  // Update cart item quantity
+  Future<void> updateCartItemQuantity(
+      String userId, String cartItemId, int newQuantity) async {
+    await _firestore
         .collection('users')
         .doc(userId)
-        .collection('favorites')
-        .doc(productId)
+        .collection('cart')
+        .doc(cartItemId)
+        .update({
+      'quantity': newQuantity,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Remove item from cart
+  Future<void> removeFromCart(String userId, String cartItemId) async {
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('cart')
+        .doc(cartItemId)
         .delete();
   }
 
-  // Product details
-  Future<DocumentSnapshot> getProductDetails(String productId) {
-    return products.doc(productId).get();
-  }
+  // Process checkout
+  Future<void> processCheckout(
+      String userId, Map<String, dynamic> orderDetails) async {
+    // Create a new order document
+    final orderRef = await _firestore.collection('orders').add({
+      'userId': userId,
+      'orderDate': FieldValue.serverTimestamp(),
+      'status': 'pending',
+      'subtotal': orderDetails['subtotal'],
+      'shipping': orderDetails['shipping'],
+      'total': orderDetails['total'],
+      'address': orderDetails['address'] ?? {},
+      'paymentMethod': orderDetails['paymentMethod'] ?? 'card',
+    });
 
-  // Order methods
-  Future<DocumentReference> createOrder(
-      String userId, Map<String, dynamic> orderData) {
-    // Add userId to the order data
-    orderData['userId'] = userId;
-    orderData['createdAt'] = FieldValue.serverTimestamp();
-    orderData['status'] = 'pending';
+    Future<bool> isProductInFavorites(String userId, String productId) async {
+      try {
+        final doc = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('favorites')
+            .doc(productId)
+            .get();
+        return doc.exists;
+      } catch (e) {
+        throw Exception('Error checking favorites: $e');
+      }
+    }
 
-    return orders.add(orderData);
-  }
+    Future<void> addToFavorites(String userId, String productId) async {
+      try {
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('favorites')
+            .doc(productId)
+            .set({
+          'productId': productId,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        throw Exception('Error adding to favorites: $e');
+      }
+    }
 
-  Stream<QuerySnapshot> getUserOrders(String userId) {
-    return orders
-        .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-  }
+    Future<void> removeFromFavorites(String userId, String productId) async {
+      try {
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('favorites')
+            .doc(productId)
+            .delete();
+      } catch (e) {
+        throw Exception('Error removing from favorites: $e');
+      }
+    }
 
-  // Get a specific order by ID
-  Future<DocumentSnapshot> getOrderById(String orderId) {
-    return orders.doc(orderId).get();
+    // Optional: Get all favorite products for a user
+    Stream<QuerySnapshot> getUserFavorites(String userId) {
+      return _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('favorites')
+          .orderBy('addedAt', descending: true)
+          .snapshots();
+    }
+
+    // Get all cart items
+    final cartItems = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('cart')
+        .get();
+
+    // Add each cart item to the order items subcollection
+    for (var item in cartItems.docs) {
+      final itemData = item.data();
+      final productId = itemData['productId'];
+      final price = itemData['price'] ?? 0.0; // Use price from cart item
+
+      // Get product details
+      final productDoc = await getProductById(productId);
+      if (productDoc.exists) {
+        final productData = productDoc.data() as Map<String, dynamic>;
+
+        await orderRef.collection('items').add({
+          'productId': productId,
+          'productName': productData['name'] ?? 'Unknown Product',
+          'price': price, // Use the price from cart item
+          'quantity': itemData['quantity'] ?? 1,
+          'size': itemData['size'] ?? 'M',
+          'brand': productData['brand'] ?? '',
+          'imagePath': productData['imagePath'] ?? '',
+        });
+      }
+    }
+
+    // Clear the cart after successful checkout
+    for (var item in cartItems.docs) {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .doc(item.id)
+          .delete();
+    }
   }
 }

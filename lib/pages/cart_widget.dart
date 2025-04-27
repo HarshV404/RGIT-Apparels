@@ -1,9 +1,124 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:rgit_apparels/pages/home_widget.dart';
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:rgit_apparels/services/firestore_services.dart';
 
-class MyCartWidget extends StatelessWidget {
+class MyCartWidget extends StatefulWidget {
   const MyCartWidget({super.key});
+
+  @override
+  State<MyCartWidget> createState() => _MyCartWidgetState();
+}
+
+class _MyCartWidgetState extends State<MyCartWidget> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  double _subtotal = 0.0;
+  double _shipping = 40.90;
+  bool _isLoading = false;
+  
+  String getCurrentUserId() {
+    final user = _auth.currentUser;
+    return user?.uid ?? 'current_user'; // Fallback for testing
+  }
+
+  Future<void> _updateCartItemQuantity(String cartItemId, int newQuantity) async {
+    if (newQuantity <= 0) {
+      // Remove item if quantity becomes zero or negative
+      await _firestoreService.removeFromCart(getCurrentUserId(), cartItemId);
+    } else {
+      // Update quantity
+      await _firestoreService.updateCartItemQuantity(getCurrentUserId(), cartItemId, newQuantity);
+    }
+  }
+
+  Future<void> _removeCartItem(String cartItemId) async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      await _firestoreService.removeFromCart(getCurrentUserId(), cartItemId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Item removed from cart')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error removing item: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Calculate subtotal from cart items
+  double _calculateSubtotal(List<DocumentSnapshot> cartItems) {
+    double total = 0.0;
+    for (var item in cartItems) {
+      final data = item.data() as Map<String, dynamic>;
+      
+      // Get price directly from cart item if available
+      final price = data.containsKey('price') 
+          ? (double.tryParse(data['price']?.toString() ?? '0') ?? 0.0) 
+          : 0.0;
+      
+      final quantity = data['quantity'] ?? 1;
+      total += price * quantity;
+    }
+    return total;
+  }
+
+  void _checkout() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Process checkout logic here
+      final userId = getCurrentUserId();
+      
+      // Get the current cart items for the total calculation
+      final cartSnapshot = await _firestoreService.getUserCartItemsOnce(userId);
+      final cartItems = cartSnapshot.docs;
+      final subtotal = _calculateSubtotal(cartItems);
+      final total = subtotal + _shipping;
+      
+      // Create order details
+      final orderDetails = {
+        'subtotal': subtotal,
+        'shipping': _shipping,
+        'total': total,
+        // Add more details as needed
+      };
+      
+      // Process the checkout
+      await _firestoreService.processCheckout(userId, orderDetails);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order placed successfully!')),
+      );
+      
+      // Navigate back to home
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeWidget()),
+        (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Checkout error: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,98 +127,183 @@ class MyCartWidget extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // App Bar
-            _buildAppBar(),
-            // Cart Items List
+            _buildAppBar(context),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildCartItem(
-                      image: 'lib/images/Nikeepicreactflyknitskybluerunningshoes1_prev_ui1.png',
-                      title: 'Nike Club Max',
-                      price: 64.95,
-                      size: 'L',
-                      bgSvg: 'lib/images/rectangle797.svg',
-                      angle: 17.87,
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestoreService.getUserCartItems(getCurrentUserId()),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('Your cart is empty'));
+                  }
+                  
+                  final cartItems = snapshot.data!.docs;
+                  
+                  // Calculate and update subtotal when cart data changes
+                  _subtotal = _calculateSubtotal(cartItems);
+                  
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+                        ...cartItems.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final productId = data['productId'];
+                          final quantity = data['quantity'] ?? 1;
+                          
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: _firestoreService.getProductById(productId),
+                            builder: (context, productSnapshot) {
+                              if (!productSnapshot.hasData) {
+                                return const SizedBox(
+                                  height: 85,
+                                  child: Center(child: CircularProgressIndicator()),
+                                );
+                              }
+                              
+                              if (productSnapshot.hasError || 
+                                  !productSnapshot.data!.exists) {
+                                return const SizedBox();
+                              }
+                              
+                              final productData = productSnapshot.data!.data() 
+                                  as Map<String, dynamic>;
+                              
+                              // Get price from product data
+                              final price = double.tryParse(
+                                productData['price']?.toString() ?? '0'
+                              ) ?? 0.0;
+                              
+                              // Update price in cart item if missing
+                              // This ensures we have pricing data in the cart items
+                              if (!data.containsKey('price')) {
+                                _firestoreService.updateCartItemPrice(
+                                  getCurrentUserId(), 
+                                  doc.id, 
+                                  price
+                                );
+                              }
+                                  
+                              return Column(
+                                children: [
+                                  _buildCartItem(
+                                    cartItemId: doc.id,
+                                    image: productData['imagePath'] ?? '',
+                                    title: productData['name'] ?? 'Unknown Product',
+                                    price: price,
+                                    size: data['size'] ?? 'M',
+                                    bgSvg: _getBackgroundSvg(productData['brand']),
+                                    angle: _getAngle(productData['name'] ?? ''),
+                                    quantity: quantity,
+                                  ),
+                                  const SizedBox(height: 30),
+                                ],
+                              );
+                            },
+                          );
+                        }).toList(),
+                      ],
                     ),
-                    const SizedBox(height: 30),
-                    _buildCartItem(
-                      image: 'lib/images/Pngaaa.png',
-                      title: 'Nike Air Max 200',
-                      price: 64.95,
-                      size: 'XL',
-                      bgSvg: 'lib/images/rectangle798.svg',
-                      angle: -165.39,
-                    ),
-                    const SizedBox(height: 30),
-                    _buildCartItem(
-                      image: 'lib/images/Pngaaa1.png',
-                      title: 'Nike Air Max',
-                      price: 64.95,
-                      size: 'XXL',
-                      bgSvg: 'lib/images/rectangle799.svg',
-                      angle: -27.88,
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
-            // Checkout Panel
-            _buildCheckoutPanel(),
+            // Checkout panel with latest subtotal
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestoreService.getUserCartItems(getCurrentUserId()),
+              builder: (context, snapshot) {
+                double subtotal = 0.0;
+                
+                if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                  subtotal = _calculateSubtotal(snapshot.data!.docs);
+                }
+                
+                return _buildCheckoutPanel(subtotal);
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAppBar() {
+  String _getBackgroundSvg(String? brand) {
+    // Map brands to background SVGs
+    switch (brand?.toLowerCase() ?? '') {
+      case 'nike':
+        return 'lib/images/rectangle797.svg';
+      case 'adidas':
+        return 'lib/images/rectangle798.svg';
+      case 'puma':
+        return 'lib/images/rectangle799.svg';
+      default:
+        return 'lib/images/rectangle797.svg';
+    }
+  }
+
+  double _getAngle(String productName) {
+    // Create a deterministic angle based on product name
+    if (productName.contains('Air Max')) {
+      return -27.88;
+    } else if (productName.contains('Club')) {
+      return 17.87;
+    } else {
+      return -165.39;
+    }
+  }
+
+  Widget _buildAppBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(40),
-            ),
-            padding: const EdgeInsets.all(15),
-            child: SvgPicture.asset(
-              'lib/images/vector175stroke.svg',
-              width: 24,
-              height: 24,
-            ),
+          BackButton(
+            color: Colors.black,
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeWidget()),
+                (Route<dynamic> route) => false,
+              );
+            },
           ),
           const Spacer(),
           const Text(
             'My Cart',
             style: TextStyle(
               color: Color(0xFF1A242F),
-              fontSize: 16,
-              fontWeight: FontWeight.normal,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const Spacer(),
-          const SizedBox(width: 94), // Maintains original spacing
+          const SizedBox(width: 94),
         ],
       ),
     );
   }
 
   Widget _buildCartItem({
+    required String cartItemId,
     required String image,
     required String title,
     required double price,
     required String size,
     required String bgSvg,
     required double angle,
+    required int quantity,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Product Image
         SizedBox(
           width: 87,
           height: 85,
@@ -113,17 +313,26 @@ class MyCartWidget extends StatelessWidget {
               Positioned.fill(
                 child: Transform.rotate(
                   angle: angle * (math.pi / 180),
-                  child: Image.asset(
-                    image,
-                    fit: BoxFit.contain,
-                  ),
+                  child: image.isNotEmpty && image.startsWith('http')
+                    ? Image.network(
+                        image,
+                        fit: BoxFit.contain,
+                        errorBuilder: (ctx, error, _) => Icon(
+                          Icons.image_not_supported,
+                          size: 40,
+                          color: Colors.grey[400],
+                        ),
+                      )
+                    : Image.asset(
+                        'lib/images/Nikeepicreactflyknitskybluerunningshoes1_prev_ui1.png',
+                        fit: BoxFit.contain,
+                      ),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(width: 16),
-        // Product Info
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,26 +354,30 @@ class MyCartWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              // Quantity Controls
               Row(
                 children: [
-                  _buildQuantityButton(Icons.remove, Colors.white),
+                  GestureDetector(
+                    onTap: () => _updateCartItemQuantity(cartItemId, quantity - 1),
+                    child: _buildQuantityButton(Icons.remove, Colors.white),
+                  ),
                   const SizedBox(width: 16),
-                  const Text(
-                    '1',
-                    style: TextStyle(
+                  Text(
+                    quantity.toString(),
+                    style: const TextStyle(
                       color: Color(0xFF101817),
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  _buildQuantityButton(Icons.add, const Color(0xFF5B9EE1)),
+                  GestureDetector(
+                    onTap: () => _updateCartItemQuantity(cartItemId, quantity + 1),
+                    child: _buildQuantityButton(Icons.add, Color(0xFF5B9EE1)),
+                  ),
                 ],
               ),
             ],
           ),
         ),
-        // Size and Delete
         Column(
           children: [
             Text(
@@ -177,7 +390,7 @@ class MyCartWidget extends StatelessWidget {
             const SizedBox(height: 32),
             IconButton(
               icon: SvgPicture.asset('lib/images/vector.svg'),
-              onPressed: () {},
+              onPressed: () => _removeCartItem(cartItemId),
             ),
           ],
         ),
@@ -201,7 +414,9 @@ class MyCartWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildCheckoutPanel() {
+  Widget _buildCheckoutPanel(double subtotal) {
+    final totalCost = subtotal + _shipping;
+    
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -213,20 +428,16 @@ class MyCartWidget extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          // Subtotal and Shipping
-          _buildPriceRow('Subtotal', '\$1250.00'),
+          _buildPriceRow('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 16),
-          _buildPriceRow('Shopping', '\$40.90'),
+          _buildPriceRow('Shipping', '\$${_shipping.toStringAsFixed(2)}'),
           const SizedBox(height: 24),
-          // Divider
           const Divider(),
           const SizedBox(height: 16),
-          // Total
-          _buildPriceRow('Total Cost', '\$1690.99', isTotal: true),
+          _buildPriceRow('Total Cost', '\$${totalCost.toStringAsFixed(2)}', isTotal: true),
           const SizedBox(height: 24),
-          // Checkout Button
           ElevatedButton(
-            onPressed: () {},
+            onPressed: _isLoading ? null : _checkout,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF5B9EE1),
               shape: RoundedRectangleBorder(
@@ -238,13 +449,15 @@ class MyCartWidget extends StatelessWidget {
               ),
               minimumSize: const Size(double.infinity, 0),
             ),
-            child: const Text(
-              'Checkout',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-              ),
-            ),
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                    'Checkout',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                    ),
+                  ),
           ),
         ],
       ),
