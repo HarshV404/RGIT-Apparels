@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:rgit_apparels/pages/home_widget.dart';
-import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rgit_apparels/services/firestore_services.dart';
+import 'dart:math' as math;
 
 class MyCartWidget extends StatefulWidget {
   const MyCartWidget({super.key});
