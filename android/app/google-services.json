@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "705066663077",
-    "project_id": "rgit-apparels-1f563",
-    "storage_bucket": "rgit-apparels-1f563.firebasestorage.app"
+    "project_number": "1027754347887",
+    "project_id": "rgit-apparels-cc231",
+    "storage_bucket": "rgit-apparels-cc231.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:705066663077:android:8b2fb4c7af4ebd48f1214c",
+        "mobilesdk_app_id": "1:1027754347887:android:ccfbfeb9836f40383a6c9a",
         "android_client_info": {
           "package_name": "com.example.rgit_apparels"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAXJgWM-hOXByyqxc3VLNBGpgVoHQCcye4"
+          "current_key": "AIzaSyCqeOtRW1dj172ERv8h8gNm9JJJccEU0D0"
         }
       ],
       "services": {

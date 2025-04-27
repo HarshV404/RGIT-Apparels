@@ -3,15 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rgit_apparels/auth/auth_page.dart';
 import 'package:rgit_apparels/models/shop.dart';
-import 'package:rgit_apparels/pages/cart_page.dart';
+import 'package:rgit_apparels/pages/cart_widget.dart';
 import 'package:rgit_apparels/pages/customize_page.dart';
-import 'package:rgit_apparels/pages/fav_page.dart';
-import 'package:rgit_apparels/pages/home_page.dart';
+import 'package:rgit_apparels/pages/favourite_widget.dart';
+import 'package:rgit_apparels/pages/home_widget.dart';
 import 'package:rgit_apparels/pages/intro_page.dart';
-import 'package:rgit_apparels/pages/shop_page.dart';
-import 'package:rgit_apparels/pages/splash_screen.dart';
+import 'package:rgit_apparels/pages/profile_page.dart';
 import 'package:rgit_apparels/themes/light_mode.dart';
-
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,16 +29,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const SplashScreen(),
+      home: const HomeWidget(),
       theme: lightMode,
       routes: {
-        '/splash_screen':(context) => const SplashScreen(),
         '/intro_page':(context) => const IntroPage(),
         '/auth_page':(context) => const AuthPage(),
-        '/shop_page':(context) => const ShopPage(),
-        '/cart_page':(context) => const CartPage(),
-        '/home_page':(context) => const HomePage(),
-        '/fav-page':(context) => const FavPage(),
+        '/cart_page':(context) => const MyCartWidget(),
+        '/home_page':(context) => const HomeWidget(),
+        '/fav-page':(context) => const FavouriteWidget(),
+        '/profile_page':(context) => const ProfilePage(),
         'customize_page':(context) => const CustomizePage(),
       },
     );
